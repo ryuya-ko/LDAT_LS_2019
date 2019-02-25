@@ -10,8 +10,8 @@ library(spBayes)
 library(RColorBrewer)
 
 ## 前処理したデータを読み込む
-dat <- read.csv('data/dev/house_price_raw.csv')
-mdat <- read.csv('data/dev/house_price_pred.csv')
+dat <- read.csv('data/dev/csv/house_price_raw.csv')
+mdat <- read.csv('data/dev/csv/house_price_pred.csv')
 
 dat[1:5,]
 coordinates(dat) =~ px+py
@@ -25,7 +25,7 @@ display.brewer.all()
 nc   <- 8
 cols <- rev(brewer.pal(n = nc, name = "RdYlBu"))
 cuts<-c(-Inf, quantile(dat$price,probs=seq(0.1,0.9,0.1)), Inf)
-spplot(dat, "price",cuts=cuts, col.regions = cols, col="transparent",cex=0.7) # 住宅地価をプロット
+spplot(dat, "price",cuts=cuts, col.regions = cols, col="transparent",cex=1.5) # 住宅地価をプロット
 
 ## バリオグラムの推定
 varioC    <-variogram(object=log(price)~tokyo+station,data=dat,cloud=T)
