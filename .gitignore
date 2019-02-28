@@ -2,3 +2,5 @@
 *.png
 *.Rhistory
 .ipynb_checkpoints/
+.venv/
+.vscode
