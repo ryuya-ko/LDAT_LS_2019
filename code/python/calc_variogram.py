@@ -1,0 +1,131 @@
+import numpy as np
+from scipy.spatial.distance import pdist
+from scipy import stats
+import scipy.optimize as opt
+import matplotlib.pyplot as plt
+
+def get_diff(data):
+    '''
+    get the difference of spatial data
+    input: (n,3) matrix data
+    output: np.array(n,2)
+    '''
+    dist_vec = pdist(data[:, :2])  # calculate the distance between each pair of points
+    z_vec = pdist(data[:, 2:])**2/2  # calculate the difference of the values in each pairwise
+    diff = np.stack([dist_vec, z_vec])
+
+    return diff
+
+def emp_variogram(z_vario, lag_h):
+    '''
+    calculate empirical variogram
+    input: difference of spatial (2, nC2)matrix,  bandwith of bins
+    '''
+    bin_means, bin_edges, bin_number = stats.binned_statistic(z_vario[0], z_vario[1], statistic='mean', bins=lag_h)
+    # bin_edgesに関しては最初のものを省く
+    e_vario = np.stack([bin_edges[1:], bin_means[0:]], axis=0)
+    e_vario = np.delete(e_vario, np.where(e_vario[1] <= 0), axis=1)
+
+    return e_vario
+
+def liner_model(x, a, b):
+    return a + b * x
+
+
+def gaussian_model(x, a, b, c):
+    return a + b * (1 - np.exp(-(x / c)**2))
+
+
+def exponential_model(x, a, b, c):
+    return a + b * (1 - np.exp(-(x / c)))
+
+
+def spherical_model(x, a, b, c):
+    cond = [x < c, x > c]
+    func = [lambda x: a + (b / 2) * (3 * (x / c) - (x / c)**3), lambda x: a + b]
+    return np.piecewise(x, cond, func)
+
+
+def auto_fit(e_vario, fitting_range, selected_model):
+    # フィッティングレンジまでで標本バリオグラムを削る
+    data = np.delete(e_vario, np.where(e_vario[0] > fitting_range)[0], axis=1)
+    if (selected_model == 0):
+        param, cov = opt.curve_fit(liner_model, data[0], data[1])
+    elif (selected_model == 1):
+        param, cov = opt.curve_fit(gaussian_model, data[0], data[1], [0, 0, fitting_range])
+    elif (selected_model == 2):
+        param, cov = opt.curve_fit(exponential_model, data[0], data[1], [0, 0, fitting_range])
+    elif (selected_model == 3):
+        param, cov = opt.curve_fit(spherical_model, data[0], data[1], [0, 0, fitting_range])
+    param = np.insert(param, 0, [selected_model, fitting_range])
+    return param
+
+def plot_semivario(e_vario, param):
+    fig, ax = plt.subplots()
+    ax.plot(e_vario[0], e_vario[1], 'o')
+    xlim_arr = np.linspace(0, np.max(e_vario[0])*1.1, 10)
+    print(xlim_arr)
+    if (param[0] == 0):
+        ax.plot(xlim_arr, liner_model(xlim_arr, param[2], param[3]), 'r-')
+        print(param[2], param[3])
+    elif (param[0] == 1):
+        ax.plot(xlim_arr, gaussian_model(xlim_arr, param[2], param[3], param[4]), 'r-')
+        print(xlim_arr, param[3], param[4])
+    elif (param[0] == 2):
+        ax.plot(xlim_arr, exponential_model(xlim_arr, param[2], param[3], param[4]), 'r-')
+        print(param[2], param[3], param[4])
+    elif (param[0] == 3):
+        ax.plot(xlim_arr, spherical_model(xlim_arr, param[2], param[3], param[4]), 'r-')
+        print(param[2], param[3], param[4])
+    # グラフのタイトルの設定
+    ax.set_title('Semivariogram')
+    # 軸ラベルの設定
+    # ax.set_xlim([0, np.max(e_vario[0])])
+    # ax.set_ylim([0, np.max(e_vario[1])])
+    ax.set_xlabel('Distance [m]')
+    ax.set_ylabel('Semivariance')
+    # グラフの描画
+    return fig
+
+def choose_model(e_vario):
+    resid = None
+    model_param = None
+    for i in range(0, 4):
+        param = auto_fit(e_vario, 100, i)
+        print(param)
+        if i == 0:
+            theoritical_vario = liner_model(e_vario[0], param[2], param[3])**2
+            resid_sum = theoritical_vario.sum()
+            print('liner:{}'.format(resid_sum))
+        if i == 1:
+            theoritical_vario = gaussian_model(e_vario[0], param[2], param[3], param[4])**2
+            resid_sum = theoritical_vario.sum()
+            print('gaussian:{}'.format(resid_sum))
+        if i == 2:
+            theoritical_vario = exponential_model(e_vario[0], param[2], param[3], param[4])**2
+            resid_sum = theoritical_vario.sum()
+            print('exponent:{}'.format(resid_sum))
+        if i == 3:
+            theoritical_vario = spherical_model(e_vario[0], param[2], param[3], param[4])**2
+            resid_sum = theoritical_vario.sum()
+            print('spherical:{}'.format(resid_sum))
+        if resid is None or resid_sum < resid:
+            resid = resid_sum
+            model_param = param
+    best_vario = plot_semivario(e_vario, model_param)
+    return model_param, resid, best_vario
+
+def auto_vario(data, lag_rang):
+    min_resid = None
+    lag_num = 0
+    for lag in range(3, 11):
+        e_vario = emp_variogram(data, lag)
+        param, resid, vario_plot = choose_model(e_vario)
+        resid = resid/len(e_vario[0])
+        print(param)
+        if min_resid is None or resid < min_resid:
+            min_resid = resid
+            lag_num = lag
+            model_param = param
+            fig = vario_plot
+    return model_param, lag_num, fig
