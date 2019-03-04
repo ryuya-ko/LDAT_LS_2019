@@ -18,18 +18,20 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 from scipy import stats
+import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 # ## scipyを用いた距離行列の作成・バリオグラムのプロット
 
 n = 3
-data = np.array([[np.random.normal(0, 10) for i in range(n)] for i in range(100)]) #x,y,zを生成
+data = np.array([[np.random.normal(0, 10) for i in range(n)] for i in range(100)])
+# x,y,zを生成
 
 print(data)
 
-data[:,0:2]
+data[:, 0:2]
 
-dist_vec=pdist(data[:,0:2], 'euclidean')
+dist_vec = pdist(data[:, 0:2], 'euclidean')
 
 print(dist_vec)
 
@@ -37,7 +39,7 @@ dist_mat = squareform(dist_vec)
 
 print(dist_mat)
 
-z_mat = squareform(pdist(data[:,2:], 'euclidean')**2/2)
+z_mat = squareform(pdist(data[:, 2:], 'euclidean')**2/2)
 
 [dist_mat, z_mat]
 
@@ -49,7 +51,7 @@ print(z_vec)
 
 np.stack([dist_vec, z_vec])
 
-plt.scatter(dist_vec, pdist(data[:,2:], 'euclidean')**2/2, facecolors = 'None', edgecolors='blue')
+plt.scatter(dist_vec, pdist(data[:, 2:], 'euclidean')**2/2, facecolors='None', edgecolors='blue')
 
 
 def get_diff(data):
@@ -61,13 +63,13 @@ def get_diff(data):
     dist_vec = pdist(data[:, :2])
     z_vec = pdist(data[:, 2:])**2/2
     diff = np.stack([dist_vec, z_vec])
-    
+
     return diff
 
 
 vario = get_diff(data)
 
-plt.scatter(vario[0], vario[1],  facecolors = 'None', edgecolors='blue')
+plt.scatter(vario[0], vario[1], facecolors='None', edgecolors='blue')
 
 
 data = np.array([[np.random.normal(0, 10) for i in range(n)] for i in range(5000)])
@@ -90,15 +92,16 @@ def emp_variogram(z_vario, lag_h):
     '''
     num_rank = int(np.max(z_vario[0]) / lag_h)
     bin_means, bin_edges, bin_number = stats.binned_statistic(z_vario[0], z_vario[1], statistic='mean', bins=num_rank)
-    e_vario = np.stack([bin_edges[1:], bin_means[0:]], axis=0) #bin_edgesに関しては最初のものを省く
+    # bin_edgesに関しては最初のものを省く
+    e_vario = np.stack([bin_edges[1:], bin_means[0:]], axis=0)
     e_vario = np.delete(e_vario, np.where(e_vario[1] <= 0), axis=1)
-    
+
     return e_vario
 
 
 print(emp_variogram(vario, 10))
 
-e_vario = emp_variogram(vario,10)
+e_vario = emp_variogram(vario, 10)
 
 e_vario[1]
 
@@ -107,20 +110,25 @@ plt.scatter(e_vario[0], e_vario[1])
 
 def liner_model(x, a, b):
     return a + b * x
+
+
 def gaussian_model(x, a, b, c):
     return a + b * (1 - np.exp(-(x / c)**2))
+
+
 def exponential_model(x, a, b, c):
     return a + b * (1 - np.exp(-(x / c)))
+
+
 def spherical_model(x, a, b, c):
     cond = [x < c, x > c]
-    func = [lambda x : a + (b / 2)  * (3 * (x / c) - (x / c)**3), lambda x : a + b]
+    func = [lambda x: a + (b / 2) * (3 * (x / c) - (x / c)**3), lambda x: a + b]
     return np.piecewise(x, cond, func)
 
 
-import scipy.optimize as opt
 def auto_fit(e_vario, fitting_range, selected_model):
     # フィッティングレンジまでで標本バリオグラムを削る
-    data = np.delete(e_vario, np.where(e_vario[0]>fitting_range)[0], axis=1)
+    data = np.delete(e_vario, np.where(e_vario[0] > fitting_range)[0], axis=1)
     if (selected_model == 0):
         param, cov = opt.curve_fit(liner_model, data[0], data[1])
     elif (selected_model == 1):
@@ -129,16 +137,15 @@ def auto_fit(e_vario, fitting_range, selected_model):
         param, cov = opt.curve_fit(exponential_model, data[0], data[1], [0, 0, fitting_range])
     elif (selected_model == 3):
         param, cov = opt.curve_fit(spherical_model, data[0], data[1], [0, 0, fitting_range])
-    param = np.insert(param, 0, [selected_model,fitting_range])
+    param = np.insert(param, 0, [selected_model, fitting_range])
     return param
 
 
-param  = auto_fit(e_vario, 120, 0)
+param = auto_fit(e_vario, 120, 0)
 
 print(param)
 
-fig = plt.figure()
-ax = plt.subplot(111)
+fig, ax = plt.subplots()
 ax.plot(e_vario[0], e_vario[1], 'o')
 xlim_arr = np.arange(0, np.max(e_vario[0]), 10)
 if (param[0] == 0):
@@ -156,12 +163,9 @@ elif (param[0] == 3):
 # グラフのタイトルの設定
 ax.set_title('Semivariogram')
 # 軸ラベルの設定
-#ax.set_xlim([0, np.max(e_vario[0])])
-#ax.set_ylim([0, np.max(e_vario[1])])
+# ax.set_xlim([0, np.max(e_vario[0])])
+# ax.set_ylim([0, np.max(e_vario[1])])
 ax.set_xlabel('Distance [m]')
 ax.set_ylabel('Semivariance')
-# グラフの縦横比を調整
-aspect = 0.8 * (ax.get_xlim()[1] - ax.get_xlim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0])                     
-ax.set_aspect(aspect)
 # グラフの描画
 plt.show()
