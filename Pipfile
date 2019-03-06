@@ -17,6 +17,7 @@ jupytext = "*"
 pykrige = "*"
 tornado = "==5.1.1"
 statsmodels = "*"
+flake8 = "*"
 
 [requires]
 python_version = "3.7"

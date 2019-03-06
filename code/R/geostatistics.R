@@ -10,8 +10,8 @@ library(spBayes)
 library(RColorBrewer)
 
 ## ???????????????????????????????????????
-dat <- read.csv('data/dev/csv/house_price_raw.csv')
-mdat <- read.csv('data/dev/csv/house_price_pred.csv')
+dat <- read.csv('/Users/LOng/sengokulab/LDAT_LS_2019/data/dev/house_price_raw.csv')
+mdat <- read.csv('/Users/LOng/sengokulab/LDAT_LS_2019/data/dev/house_price_pred.csv')
 
 dat[1:5,]
 coordinates(dat) =~ px+py
