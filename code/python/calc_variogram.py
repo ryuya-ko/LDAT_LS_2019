@@ -4,25 +4,32 @@ from scipy import stats
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
+
 def get_diff(data):
     '''
     get the difference of spatial data
     input: (n,3) matrix data
     output: np.array(n,2)
     '''
-    dist_vec = pdist(data[:, :2])  # calculate the distance between each pair of points
-    z_vec = pdist(data[:, 2:])**2  # calculate the difference of the values in each pairwise
+
+    # calculate the distance between each pair of points
+    dist_vec = pdist(data[:, :2])
+    z_vec = pdist(data[:, 2:])**2
+    # calculate the difference of the values in each pairwise
     diff = np.stack([dist_vec, z_vec])
 
     return diff
+
 
 def emp_variogram(z_vario, lag_h):
     '''
     calculate empirical variogram
     input: difference of spatial (2, nC2)matrix,  bandwith of bins
     '''
-    bin_means, bin_edges, bin_number = stats.binned_statistic(z_vario[0], z_vario[1], statistic='mean', bins=lag_h)
-    bin_count, bin_edges, bin_number = stats.binned_statistic(z_vario[0], z_vario[1], statistic='count', bins=lag_h)  # NWLS法のためにカウントをとる
+    bin_means, bin_edges, bin_number = \
+        stats.binned_statistic(z_vario[0], z_vario[1], statistic='mean', bins=lag_h)
+    bin_count, bin_edges, bin_number = \
+        stats.binned_statistic(z_vario[0], z_vario[1], statistic='count', bins=lag_h)  # NWLS法のためにカウントをとる
     # bin_edgesに関しては最初のものを省く
     e_vario = np.stack([bin_edges[1:], bin_means[0:]], axis=0)
     e_vario = np.delete(e_vario, np.where(e_vario[1] <= 0), axis=1)
@@ -30,21 +37,24 @@ def emp_variogram(z_vario, lag_h):
 
     return e_vario, bin_count
 
+
 def liner_model(x, a, b):
     return a + b * x
 
 
 def gaussian_model(x, a, b, c):
-    return a + b * (1 - np.exp(-(x / c)**2))
+    return a + b * (1 - np.exp(-(x / c)**2))  # range param:c
 
 
 def exponential_model(x, a, b, c):
-    return a + b * (1 - np.exp(-(x / c)))
+    return a + b * (1 - np.exp(-(x / c)))  # range param: c
 
 
 def spherical_model(x, a, b, c):
     cond = [x < c, x > c]
-    func = [lambda x: a + (b / 2) * (3 * (x / c) - (x / c)**3), lambda x: a + b]
+    func = \
+        [lambda x: a + (b / 2) * (3 * (x / c) - (x / c)**3), lambda x: a + b]
+    # range param: c
     return np.piecewise(x, cond, func)
 
 
@@ -54,13 +64,17 @@ def auto_fit(e_vario, fitting_range, selected_model):
     if (selected_model == 0):
         param, cov = opt.curve_fit(liner_model, data[0], data[1])
     elif (selected_model == 1):
-        param, cov = opt.curve_fit(gaussian_model, data[0], data[1], bounds=(0, fitting_range))
+        param, cov = \
+            opt.curve_fit(gaussian_model, data[0], data[1], bounds=(0, fitting_range))
     elif (selected_model == 2):
-        param, cov = opt.curve_fit(exponential_model, data[0], data[1], bounds=(0, fitting_range))
+        param, cov = \
+            opt.curve_fit(exponential_model, data[0], data[1], bounds=(0, fitting_range))
     elif (selected_model == 3):
-        param, cov = opt.curve_fit(spherical_model, data[0], data[1], bounds=(0, fitting_range))
+        param, cov = \
+            opt.curve_fit(spherical_model, data[0], data[1], bounds=(0, fitting_range))
     param = np.insert(param, 0, [selected_model, fitting_range])
     return param
+
 
 def plot_semivario(e_vario, param):
     fig, ax = plt.subplots()
@@ -88,6 +102,7 @@ def plot_semivario(e_vario, param):
     ax.set_ylabel('Semivariance')
     # グラフの描画
     return fig
+
 
 def choose_model(e_vario, count):
     '''
@@ -137,6 +152,7 @@ def choose_model(e_vario, count):
             model_param = param
     best_vario = plot_semivario(e_vario, model_param)
     return model_param, obj_min, best_vario
+
 
 def auto_vario(data, lag):
     e_vario, count = emp_variogram(data, lag)

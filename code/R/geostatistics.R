@@ -1,5 +1,5 @@
 # リーディングDAT LSの地球統計モデリングの章の実装
-setwd('/Users/LOng/sengokuLab/study/LDAT_LS_2019/')
+setwd('~/sengokuLab/LDAT_LS_2019/')
 
 # install.packages("gstat")
 # install.packages("spBayes")

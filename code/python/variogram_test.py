@@ -60,8 +60,8 @@ def get_diff(data):
     input: (n,3) matrix data
     output: np.array(n,2)
     '''
-    dist_vec = pdist(data[:, :2])
-    z_vec = pdist(data[:, 2:])**2/2
+    dist_vec = pdist(data[:, :2]) # calculate the distance between each pair of points
+    z_vec = pdist(data[:, 2:])**2/2 # calculate the difference of the values in each pairwise
     diff = np.stack([dist_vec, z_vec])
 
     return diff
@@ -169,3 +169,139 @@ ax.set_xlabel('Distance [m]')
 ax.set_ylabel('Semivariance')
 # グラフの描画
 plt.show()
+
+
+def plot_semivario(e_vario, param):
+    fig, ax = plt.subplots()
+    ax.plot(e_vario[0], e_vario[1], 'o')
+    xlim_arr = np.arange(0, np.max(e_vario[0])+10, 10)
+    print(xlim_arr)
+    if (param[0] == 0):
+        ax.plot(xlim_arr, liner_model(xlim_arr, param[2], param[3]), 'r-')
+        print(param[2], param[3])
+    elif (param[0] == 1):
+        ax.plot(xlim_arr, gaussian_model(xlim_arr, param[2], param[3], param[4]), 'r-')
+        print(xlim_arr, param[3], param[4])
+    elif (param[0] == 2):
+        ax.plot(xlim_arr, exponential_model(xlim_arr, param[2], param[3], param[4]), 'r-')
+        print(param[2], param[3], param[4])
+    elif (param[0] == 3):
+        ax.plot(xlim_arr, spherical_model(xlim_arr, param[2], param[3], param[4]), 'r-')
+        print(param[2], param[3], param[4])
+    # グラフのタイトルの設定
+    ax.set_title('Semivariogram')
+    # 軸ラベルの設定
+    # ax.set_xlim([0, np.max(e_vario[0])])
+    # ax.set_ylim([0, np.max(e_vario[1])])
+    ax.set_xlabel('Distance [m]')
+    ax.set_ylabel('Semivariance')
+    # グラフの描画
+    return fig
+
+
+# ### autochoice関数を作成する
+#  - calculate the empirical variogram and the residuals under the defined number of lags
+#  - compare the residuals among the models and choose the best model
+#      - 誤差二乗和の最小化 or 絶対値和の最小化
+
+print(e_vario)
+
+liner_model(e_vario[0], param[2], param[3])**2
+
+e_vario[0].sum()
+
+resid = None
+model_num = None
+model_param = None
+for i in range(0, 4):
+    param = auto_fit(e_vario, 100, i)
+    if i == 0:
+        theoritical_vario = liner_model(e_vario[0], param[2], param[3])**2
+        resid_sum = theoritical_vario.sum()
+    if i == 1:
+        theoritical_vario = gaussian_model(e_vario[0], param[2], param[3], param[4])**2
+        resid_sum = theoritical_vario.sum()
+    if i == 2:
+        theoritical_vario = exponential_model(e_vario[0], param[2], param[3], param[4])**2
+        resid_sum = theoritical_vario.sum()
+    if i == 3:
+        theoritical_vario = spherical_model(e_vario[0], param[2], param[3], param[4])**2
+        resid_sum = theoritical_vario.sum()
+    if resid is None or resid_sum < resid:
+        resid = resid_sum
+        model_num = i
+        model_param = param
+test_vario = plot_semivario(e_vario, model_param)
+
+
+def choose_model(e_vario):
+    resid = None
+    model_num = None
+    model_param = None
+    for i in range(0, 4):
+        param = auto_fit(e_vario, 100, i)
+        if i == 0:
+            theoritical_vario = liner_model(e_vario[0], param[2], param[3])**2
+            resid_sum = theoritical_vario.sum()
+        if i == 1:
+            theoritical_vario = gaussian_model(e_vario[0], param[2], param[3], param[4])**2
+            resid_sum = theoritical_vario.sum()
+        if i == 2:
+            theoritical_vario = exponential_model(e_vario[0], param[2], param[3], param[4])**2
+            resid_sum = theoritical_vario.sum()
+        if i == 3:
+            theoritical_vario = spherical_model(e_vario[0], param[2], param[3], param[4])**2
+            resid_sum = theoritical_vario.sum()
+        if resid is None or resid_sum < resid:
+            resid = resid_sum
+            model_param = param
+    best_vario = plot_semivario(e_vario, model_param)
+    return model_param, resid, best_vario
+
+
+choose_model(e_vario)
+
+e_vario2 = emp_variogram(vario, 5)
+
+test_param, test_res, test_fig = choose_model(e_vario2)
+
+plt.plot(e_vario2[0], exponential_model(e_vario2[0], test_param[2], test_param[3], test_param[4]))
+plt.scatter(e_vario2[0], e_vario2[1])
+
+min_resid = None
+lag_num = 0
+for lag in range(3, 11):
+    e_vario = emp_variogram(vario, lag)
+    param, resid, vario_plot = choose_model(e_vario)
+    resid = resid/len(e_vario[0])
+    print(param)
+    if min_resid is None or resid < min_resid:
+        min_resid = resid
+        lag_num = lag
+        model_param = param
+        fig = vario_plot
+print('=======')
+print([lag_num, model_param])
+
+fig
+
+
+def auto_vario(data, lag_rang):
+    min_resid = None
+    lag_num = 0
+    for lag in range(3, 11):
+        e_vario = emp_variogram(vario, lag)
+        param, resid, vario_plot = choose_model(e_vario)
+        resid = resid/len(e_vario[0])
+        print(param)
+        if min_resid is None or resid < min_resid:
+            min_resid = resid
+            lag_num = lag
+            model_param = param
+            fig = vario_plot
+    return model_param, lag_num, fig
+
+
+param, lag_num, fig = auto_vario(vario, range(3,11))
+
+fig
