@@ -5,11 +5,14 @@ import statsmodels.api as sm
 
 
 def calc_c0(param, distance, *range_of_linear):
-    '''calculate the common variance(nugget)'''
+    '''
+    calculate the common variance(nugget)
+    '''
 
     ef_range = put_effective_range(param, range_of_linear)
+    # effective rangeの設定. アドホックに変更しているので要相談
     if ef_range < np.max(distance):
-        ef_range = np.max(distance)  # *1.2
+        ef_range = np.max(distance)
     c0 = call_model(ef_range, param)
 
     return ef_range, c0
@@ -39,7 +42,10 @@ def put_effective_range(param, *range_of_linear):
 
 
 def call_model(x, param):
-    '''call the variogram model'''
+    '''
+    call the covariogram model
+    '''
+    # linear, exponential, sphericalについては未定義
     if param[0] == 0:
         return variogram.liner_model(x, param[2], param[3])
     if param[0] == 1:
@@ -56,6 +62,7 @@ def est_covariance_matrix(distance_matrix, param, c0, reg=True):
     # estimate the covariance
     covariance = est_covar(distance_matrix, param, c0)
     # if estimator was not non-negative positive definite, convert it
+    # this process is performed only when the matrix is (n, n)
     if reg is True:
         modified_covariance = convert_add_lmd(covariance)
     else:
@@ -65,6 +72,7 @@ def est_covariance_matrix(distance_matrix, param, c0, reg=True):
     疑問
     半正定値処理をすると、対角要素が0.95周辺に変換される
     しかもc0の値に関してrobust(2.2~3.5の間)
+    処理の内容としては機械学習の手法から引っ張ってきた
     '''
 
     return modified_covariance
