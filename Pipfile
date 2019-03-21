@@ -18,6 +18,7 @@ pykrige = "*"
 tornado = "==5.1.1"
 statsmodels = "*"
 flake8 = "*"
+jupyterlab = "*"
 
 [requires]
 python_version = "3.7"
