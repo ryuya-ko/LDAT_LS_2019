@@ -1,17 +1,17 @@
 # リーディングDAT LSの地球統計モデリングの章の実装
-setwd('/Users/mfjkou/sengokuLab/study/LDAT_LS_2019/')
+setwd('~/sengokuLab/LDAT_LS_2019/')
 
-install.packages("gstat")
-install.packages("spBayes")
-install.packages("RColorBrewer")
-
+# install.packages("gstat")
+# install.packages("spBayes")
+# install.packages("RColorBrewer")
+library(sp)
 library(gstat)
 library(spBayes)
 library(RColorBrewer)
 
 ## 前処理したデータを読み込む
-dat <- read.csv('data/dev/csv/house_price_raw.csv')
-mdat <- read.csv('data/dev/csv/house_price_pred.csv')
+dat <- read.csv('/Users/LOng/sengokulab/LDAT_LS_2019/data/dev/house_price_raw.csv')
+mdat <- read.csv('/Users/LOng/sengokulab/LDAT_LS_2019/data/dev/house_price_pred.csv')
 
 dat[1:5,]
 coordinates(dat) =~ px+py
@@ -36,7 +36,7 @@ plot(vario)                                 # 経験バリオグラム
 
 mvario <- fit.variogram(object=vario, model=vgm(psill=0.04,model="Exp",range=0.04,nugget=0.01))
 # 理論バリオグラムの推定(vgm関数の中に入れる各値はパラメータ推定の初期値)
-plot(vario,mvario)                          #理論バリオグラム
+plot(vario,mvario)                          # 理論バリオグラム
 
 #automapについては別途行う(アップされたコードに記載なし)
 
@@ -59,10 +59,10 @@ cols <- rev(brewer.pal(n = nc, name = "RdYlBu"))   # 色分け方法を指定
 rang <-range(mdat@data$predRK)                     # 予測値の最小値・最大値
 cuts<-seq(rang[1],rang[2],len=nc-1)                # 色の区切り値を指定
 
-spplot(mdat, "predRK",cuts=cuts, col.regions = cols, col="transparent",cex=1.9, pch=15) #krigingの結果
+spplot(mdat, "predRK",cuts=cuts, col.regions = cols, col="transparent",cex=1.9, pch=15) # krigingの結果
 # 隙間ができる場合はサイズcexを大きくする
 
-spplot(mdat, "predLM",cuts=cuts, col.regions = cols, col="transparent",cex=1.9,pch=15) #線形回帰の結果
+spplot(mdat, "predLM",cuts=cuts, col.regions = cols, col="transparent",cex=1.9,pch=15) # 線形回帰の結果
 #hotspotが消失してしまっている
 
 #krigingによる期待二乗誤差をプロット
@@ -73,11 +73,11 @@ spplot(mdat, "varRK",cuts=cuts, col.regions = cols, col="transparent",cex=2,pch=
 ## Leave-one-out cross validatio
 ### Regression kriging
 predRK <-krige.cv(log(price)~tokyo+station,dat, mvario)
-#gstatの関数, デフォルトでLOO
+# gstatの関数, デフォルトでLOO
 ### Linear regression
 predLM <-NULL
 for(i in 1:(dim(dat)[1])){
-  dsub  <-dat@data[-i,] #選んだ項だけ除外できる
+  dsub  <-dat@data[-i,] # 選んだ項だけ除外できる
   msub  <-dat@data[ i,]
   lmod  <-lm(log(price)~tokyo+station,data=dsub)
   predlm<-predict(lmod,  newdata=msub)
@@ -85,11 +85,11 @@ for(i in 1:(dim(dat)[1])){
 }
 
 ### 結果比較
-plot(predRK@data[,c("observed","var1.pred")],pch=20) #真値vs予測値, y=x上にあればよい
-plot(log(dat@data$price),predLM,pch=20) #krigingに比べてバラバラ
+plot(predRK@data[,c("observed","var1.pred")],pch=20) # 真値vs予測値, y=x上にあればよい
+plot(log(dat@data$price),predLM,pch=20) # krigingに比べてバラバラ
 
 rmseLM <- sqrt(sum((predLM-log(dat@data$price))^2)/(dim(dat)[1]))
 rmseLM
 rmseRK <- sqrt(sum((predRK@data[,"observed"]-predRK@data[,"var1.pred"])^2)/(dim(dat)[1]))
-rmseRK #RMSEでも半分以下
+rmseRK # RMSEでも半分以下
 
