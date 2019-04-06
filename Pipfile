@@ -19,6 +19,7 @@ tornado = "==5.1.1"
 statsmodels = "*"
 flake8 = "*"
 jupyterlab = "*"
+autopep8 = "*"
 
 [requires]
 python_version = "3.7"
