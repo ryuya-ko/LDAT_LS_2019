@@ -85,7 +85,10 @@ for(i in 1:(dim(dat)[1])){
 }
 
 ### 結果比較
-plot(predRK@data[,c("observed","var1.pred")],pch=20) # 真値vs予測値, y=x上にあればよい
+curve((x), 11.6, 12.8, xlab="", ylab="", xlim=c(11.6, 12.8), ylim=c(11.6, 12.8))
+par(new=T)
+plot(predRK@data[,c("observed","var1.pred")],pch=20, xlim=c(11.6, 12.8), ylim=c(11.6, 12.8)) # 真値vs予測値, y=x上にあればよい
+
 plot(log(dat@data$price),predLM,pch=20) # krigingに比べてバラバラ
 
 rmseLM <- sqrt(sum((predLM-log(dat@data$price))^2)/(dim(dat)[1]))

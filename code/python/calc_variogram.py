@@ -17,6 +17,8 @@ def get_diff(data):
     z_vec = pdist(data[:, 2:])**2
     # calculate the difference of the values in each pairwise
     diff = np.stack([dist_vec, z_vec])
+    index = diff[0] <= diff[0].max()*1/2
+    diff = np.array([dif[index] for dif in diff])
 
     return diff
 
@@ -104,7 +106,7 @@ def plot_semivario(e_vario, param):
     return fig
 
 
-def choose_model(e_vario, count):
+def choose_model(e_vario, count, plot=True):
     '''
     NWLS法による理論バリオグラムの推定
     input: empirical variogram, number of data in each bin
@@ -114,7 +116,6 @@ def choose_model(e_vario, count):
     model_param = None
     for i in range(0, 4):
         param = auto_fit(e_vario, 100, i)
-        print(param)
         if i == 0:
             theoritical_vario = liner_model(e_vario[0], param[2], param[3])
             resid = e_vario[1] - theoritical_vario
@@ -150,12 +151,14 @@ def choose_model(e_vario, count):
         if obj_min is None or obj_sum < obj_min:
             obj_min = obj_sum
             model_param = param
-    best_vario = plot_semivario(e_vario, model_param)
-    return model_param, obj_min, best_vario
+    if plot is True:
+        best_vario_fig = plot_semivario(e_vario, model_param)
+    else:
+        best_vario_fig = None
+    return model_param, obj_min, best_vario_fig
 
 
-def auto_vario(data, lag):
+def auto_vario(data, lag, plot=True):
     e_vario, count = emp_variogram(data, lag)
-    param, resid, vario_plot = choose_model(e_vario, count)
-    print(param)
+    param, resid, vario_plot = choose_model(e_vario, count, plot)
     return param, lag, vario_plot
