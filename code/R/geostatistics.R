@@ -24,14 +24,14 @@ coordinates(mdat)=~px+py
 display.brewer.all()
 nc   <- 8
 cols <- rev(brewer.pal(n = nc, name = "RdYlBu"))
-cuts<-c(-Inf, quantile(dat$price,probs=seq(0.1,0.9,0.1)), Inf)
+cuts <- c(-Inf, quantile(dat$price,probs=seq(0.1,0.9,0.1)), Inf)
 spplot(dat, "price",cuts=cuts, col.regions = cols, col="transparent",cex=1.5) # 住宅地価をプロット
 
 ## バリオグラムの推定
-varioC    <-variogram(object=log(price)~tokyo+station,data=dat,cloud=T)
+varioC <- variogram(object=log(price)~tokyo+station,data=dat,cloud=T)
 plot(varioC)                                # バリオグラム雲
 
-vario    <-variogram(object=log(price)~tokyo+station,data=dat)
+vario <- variogram(object=log(price)~tokyo+station,data=dat)
 plot(vario)                                 # 経験バリオグラム
 
 mvario <- fit.variogram(object=vario, model=vgm(psill=0.04,model="Exp",range=0.04,nugget=0.01))
@@ -54,7 +54,7 @@ lmpred <-exp(predict(lmodel, newdata=mdat@data))
 mdat@data$predLM<-lmpred                           # 予測値
 
 ## 可視化
-nc   <- 10                                         # 10個に色分け
+nc  <- 10                                         # 10個に色分け
 cols <- rev(brewer.pal(n = nc, name = "RdYlBu"))   # 色分け方法を指定
 rang <-range(mdat@data$predRK)                     # 予測値の最小値・最大値
 cuts<-seq(rang[1],rang[2],len=nc-1)                # 色の区切り値を指定
