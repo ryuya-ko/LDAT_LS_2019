@@ -61,6 +61,11 @@ def spherical_model(x, a, b, c):
 
 
 def auto_fit(e_vario, fitting_range, selected_model):
+    '''
+    設定してモデルを経験バリオグラムにフィッティングし、パラメータを推定する
+    Input:
+    Output:
+    '''
     # フィッティングレンジまでで標本バリオグラムを削る
     data = np.delete(e_vario, np.where(e_vario[0] > fitting_range)[0], axis=1)
     if (selected_model == 0):
@@ -111,11 +116,13 @@ def choose_model(e_vario, count, plot=True):
     NWLS法による理論バリオグラムの推定
     input: empirical variogram, number of data in each bin
     output: param(model, coeff), minimized squared residuals, plot of result
+    注意: この関数は不要かもしれない。auto_varioで関数型を指定する?
     '''
     obj_min = None
     model_param = None
     for i in range(0, 4):
         param = auto_fit(e_vario, 100, i)
+        #  誤差を算出する
         if i == 0:
             theoritical_vario = liner_model(e_vario[0], param[2], param[3])
             resid = e_vario[1] - theoritical_vario
@@ -159,6 +166,11 @@ def choose_model(e_vario, count, plot=True):
 
 
 def auto_vario(data, lag, plot=True):
+    '''
+    NWLS法に基づいてバリオグラムを推定する
+    Input:
+    Output:
+    '''
     e_vario, count = emp_variogram(data, lag)
     param, resid, vario_plot = choose_model(e_vario, count, plot)
     return param, lag, vario_plot

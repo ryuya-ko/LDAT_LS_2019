@@ -45,11 +45,11 @@ def call_model(x, param):
     '''
     call the covariogram model
     '''
-    # linear, exponential, sphericalについては未定義
+    # 注意: linear, exponential, sphericalについては未定義
     if param[0] == 0:
         return variogram.liner_model(x, param[2], param[3])
     if param[0] == 1:
-        func = lambda x: param[3] * np.exp(-x**2 / param[4])
+        func = lambda x: param[3]*np.exp(-x**2/param[4])
         return func(x)
     if param[0] == 2:
         return variogram.exponential_model(x, param[2], param[3], param[4])
@@ -93,6 +93,9 @@ def calc_distance_matrix(data, point_columns):
 
 
 def est_covario(x, param, c0):
+    '''
+    to be written
+    '''
     cond = [x <= 0, x > 0]
     func = [c0, call_model(x, param)]
     return np.piecewise(x, cond, func)
