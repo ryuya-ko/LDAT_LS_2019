@@ -28,7 +28,7 @@ def kalman(y, x, SigP, SigX, SigY, F):
     dim = F.shape
     if type(F) == int:
         dim = [1]
-    In = np.identity(dim[0])
+    In = np.identity(dim[1])
     Sig = In - np.dot(K, F)
     SigP1 = np.dot(Sig, SigP0)
 

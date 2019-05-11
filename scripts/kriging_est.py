@@ -11,8 +11,8 @@ def calc_c0(param, distance, *range_of_linear):
 
     ef_range = put_effective_range(param, range_of_linear)
     # effective rangeの設定. アドホックに変更しているので要相談
-    if ef_range < np.max(distance):
-        ef_range = np.max(distance)
+    # if ef_range < np.max(distance):
+    #    ef_range = np.max(distance)
     c0 = call_model(ef_range, param)
 
     return ef_range, c0
@@ -30,13 +30,13 @@ def put_effective_range(param, *range_of_linear):
         ef_range = range_of_linear
     elif param[0] == 1:
         # gaussian model
-        ef_range = np.sqrt(3)*param[4]
+        ef_range = np.sqrt(3)*param[3]
     elif param[0] == 2:
         # exponential model
-        ef_range = 3*param[4]
+        ef_range = 3*param[3]
     elif param[0] == 3:
         # spherical model
-        ef_range = param[4]
+        ef_range = param[3]
 
     return ef_range
 
@@ -47,14 +47,14 @@ def call_model(x, param):
     '''
     # 注意: linear, exponential, sphericalについては未定義
     if param[0] == 0:
-        return variogram.liner_model(x, param[2], param[3])
+        func = lambda x: param[2] - param[3]*x
     if param[0] == 1:
-        func = lambda x: param[3]*np.exp(-x**2/param[4])
-        return func(x)
+        func = lambda x: param[2]*np.exp(-(x/param[3])**2)
     if param[0] == 2:
-        return variogram.exponential_model(x, param[2], param[3], param[4])
+        func = lambda x: param[2]*np.exp(- (x/param[3])) 
     if param[0] == 3:
-        return variogram.spherical_model(x, param[2], param[3], param[4])
+        func = lambda x: param[2]*(1 - 3*x/2*param[3] + ((x/param[3])**3)/2)
+    return func(x)
 
 
 def est_covariance_matrix(distance_matrix, param, c0, reg=True):

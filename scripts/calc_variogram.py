@@ -44,19 +44,19 @@ def liner_model(x, a, b):
     return a + b * x
 
 
-def gaussian_model(x, a, b, c):
-    return a + b * (1 - np.exp(-(x / c)**2))  # range param:c
+def gaussian_model(x, r, theta):
+    return r * (1 - np.exp(-(x / theta)**2))  # range param: theta
 
 
-def exponential_model(x, a, b, c):
-    return a + b * (1 - np.exp(-(x / c)))  # range param: c
+def exponential_model(x, r, theta):
+    return r * (1 - np.exp(-(x / theta)))  # range param: theta
 
 
-def spherical_model(x, a, b, c):
-    cond = [x < c, x > c]
+def spherical_model(x, r, theta):
+    cond = [x <= theta, x > theta]
     func = \
-        [lambda x: a + (b / 2) * (3 * (x / c) - (x / c)**3), lambda x: a + b]
-    # range param: c
+        [lambda x: r*(3*x/2*theta - ((x/theta)**3)/2), lambda x: r]
+    # range param: theta
     return np.piecewise(x, cond, func)
 
 
@@ -75,7 +75,7 @@ def auto_fit(e_vario, fitting_range, selected_model):
             opt.curve_fit(gaussian_model, data[0], data[1], bounds=(0, fitting_range))
     elif (selected_model == 2):
         param, cov = \
-            opt.curve_fit(exponential_model, data[0], data[1], bounds=(0, fitting_range))
+            opt.curve_fit(exponential_model, data[0], data[1], bounds=(0, 1.5))
     elif (selected_model == 3):
         param, cov = \
             opt.curve_fit(spherical_model, data[0], data[1], bounds=(0, fitting_range))
@@ -92,14 +92,14 @@ def plot_semivario(e_vario, param):
         ax.plot(xlim_arr, liner_model(xlim_arr, param[2], param[3]), 'r-')
         print(param[2], param[3])
     elif (param[0] == 1):
-        ax.plot(xlim_arr, gaussian_model(xlim_arr, param[2], param[3], param[4]), 'r-')
-        print(xlim_arr, param[3], param[4])
+        ax.plot(xlim_arr, gaussian_model(xlim_arr, param[2], param[3]), 'r-')
+        print(xlim_arr, param[3])
     elif (param[0] == 2):
-        ax.plot(xlim_arr, exponential_model(xlim_arr, param[2], param[3], param[4]), 'r-')
-        print(param[2], param[3], param[4])
+        ax.plot(xlim_arr, exponential_model(xlim_arr, param[2], param[3]), 'r-')
+        print(param[2], param[3])
     elif (param[0] == 3):
-        ax.plot(xlim_arr, spherical_model(xlim_arr, param[2], param[3], param[4]), 'r-')
-        print(param[2], param[3], param[4])
+        ax.plot(xlim_arr, spherical_model(xlim_arr, param[2], param[3]), 'r-')
+        print(param[2], param[3])
     # グラフのタイトルの設定
     ax.set_title('Semivariogram')
     # 軸ラベルの設定
@@ -111,7 +111,7 @@ def plot_semivario(e_vario, param):
     return fig
 
 
-def choose_model(e_vario, count, plot=True):
+def choose_model(e_vario, count, i, plot=True):
     '''
     NWLS法による理論バリオグラムの推定
     input: empirical variogram, number of data in each bin
@@ -120,44 +120,44 @@ def choose_model(e_vario, count, plot=True):
     '''
     obj_min = None
     model_param = None
-    for i in range(0, 4):
-        param = auto_fit(e_vario, 100, i)
-        #  誤差を算出する
-        if i == 0:
-            theoritical_vario = liner_model(e_vario[0], param[2], param[3])
-            resid = e_vario[1] - theoritical_vario
-            resid_sq = resid**2
-            weight = count/(theoritical_vario**2)
-            # 最小化する
-            obj = weight*resid_sq
-            obj_sum = obj.sum()
-        if i == 1:
-            theoritical_vario = gaussian_model(e_vario[0], param[2], param[3], param[4])
-            resid = e_vario[1] - theoritical_vario
-            resid_sq = resid**2
-            weight = count/(theoritical_vario**2)
-            # 最小化する
-            obj = weight*resid_sq
-            obj_sum = obj.sum()
-        if i == 2:
-            theoritical_vario = exponential_model(e_vario[0], param[2], param[3], param[4])
-            resid = e_vario[1] - theoritical_vario
-            resid_sq = resid**2
-            weight = count/(theoritical_vario**2)
-            # 最小化する
-            obj = weight*resid_sq
-            obj_sum = obj.sum()
-        if i == 3:
-            theoritical_vario = spherical_model(e_vario[0], param[2], param[3], param[4])
-            resid = e_vario[1] - theoritical_vario
-            resid_sq = resid**2
-            weight = count/(theoritical_vario**2)
-            # 最小化する
-            obj = weight*resid_sq
-            obj_sum = obj.sum()
-        if obj_min is None or obj_sum < obj_min:
-            obj_min = obj_sum
-            model_param = param
+    param = auto_fit(e_vario, 100, i)
+    #  誤差を算出する
+    '''if i == 0:
+        theoritical_vario = liner_model(e_vario[0], param[2], param[3])
+        resid = e_vario[1] - theoritical_vario
+        resid_sq = resid**2
+        weight = count/(theoritical_vario**2)
+        # 最小化する
+        obj = weight*resid_sq
+        obj_sum = obj.sum()'''
+    if i == 1:
+        theoritical_vario = gaussian_model(e_vario[0], param[2], param[3])
+        resid = e_vario[1] - theoritical_vario
+        resid_sq = resid**2
+        weight = count/(theoritical_vario**2)
+        # 最小化する
+        obj = weight*resid_sq
+        obj_sum = obj.sum()
+    if i == 2:
+        # continue;
+        theoritical_vario = exponential_model(e_vario[0], param[2], param[3])
+        resid = e_vario[1] - theoritical_vario
+        resid_sq = resid**2
+        weight = count/(theoritical_vario**2)
+        # 最小化する
+        obj = weight*resid_sq
+        obj_sum = obj.sum()
+    if i == 3:
+        theoritical_vario = spherical_model(e_vario[0], param[2], param[3])
+        resid = e_vario[1] - theoritical_vario
+        resid_sq = resid**2
+        weight = count/(theoritical_vario**2)
+        # 最小化する
+        obj = weight*resid_sq
+        obj_sum = obj.sum()
+    if obj_min is None or obj_sum < obj_min:
+        obj_min = obj_sum
+        model_param = param
     if plot is True:
         best_vario_fig = plot_semivario(e_vario, model_param)
     else:
@@ -165,12 +165,12 @@ def choose_model(e_vario, count, plot=True):
     return model_param, obj_min, best_vario_fig
 
 
-def auto_vario(data, lag, plot=True):
+def auto_vario(data, lag, model, plot=True):
     '''
     NWLS法に基づいてバリオグラムを推定する
     Input:
     Output:
     '''
     e_vario, count = emp_variogram(data, lag)
-    param, resid, vario_plot = choose_model(e_vario, count, plot)
+    param, resid, vario_plot = choose_model(e_vario, count, model, plot)
     return param, lag, vario_plot
