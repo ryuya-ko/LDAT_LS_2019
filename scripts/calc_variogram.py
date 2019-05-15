@@ -17,10 +17,14 @@ def get_diff(data):
     z_vec = pdist(data[:, 2:])**2
     # calculate the difference of the values in each pairwise
     diff = np.stack([dist_vec, z_vec])
-    index = diff[0] <= diff[0].max()*1/2
+    lat = [data[:, 0:1].min(), data[:, 0:1].max()]
+    lon = [data[:, 1:2].min(), data[:, 1:2].max()]
+    distance = (lat[1] - lat[0])**2 + (lon[1] - lon[0])**2
+    distance = np.sqrt(distance)/3
+    index = diff[0] <= distance
     diff = np.array([dif[index] for dif in diff])
 
-    return diff
+    return diff, lat, lon
 
 
 def emp_variogram(z_vario, lag_h):
