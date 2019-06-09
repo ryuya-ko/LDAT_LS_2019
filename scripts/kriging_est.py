@@ -1,4 +1,3 @@
-import calc_variogram as variogram
 import numpy as np
 import scipy.spatial.distance as dist
 import statsmodels.api as sm
@@ -6,13 +5,10 @@ import statsmodels.api as sm
 
 def calc_c0(param, distance, *range_of_linear):
     '''
-    calculate the common variance(nugget)
+    有効レンジを使った分散(ナゲット)の推定
     '''
 
     ef_range = put_effective_range(param, range_of_linear)
-    # effective rangeの設定. アドホックに変更しているので要相談
-    # if ef_range < np.max(distance):
-    #    ef_range = np.max(distance)
     c0 = call_model(ef_range, param)
 
     return ef_range, c0
@@ -20,9 +16,9 @@ def calc_c0(param, distance, *range_of_linear):
 
 def put_effective_range(param, *range_of_linear):
     '''
-    put the value of effective range
-    if you estimated the linear model, you should arbitrary choose the range
-    output: effective range
+    有効レンジを計算する. 線形モデルを推定する場合は適当な数値を当てはめる
+    input: パラメータ
+    output: 有効レンジ
     '''
 
     if param[0] == 0:
@@ -43,46 +39,44 @@ def put_effective_range(param, *range_of_linear):
 
 def call_model(x, param):
     '''
-    call the covariogram model
+    コバリオグラム関数の呼び出し
     '''
-    # 注意: linear, exponential, sphericalについては未定義
-    if param[0] == 0:
+
+    if param[0] == 0:  # 線形モデル
         func = lambda x: param[2] - param[3]*x
-    if param[0] == 1:
+    elif param[0] == 1:  # ガウス型
         func = lambda x: param[2]*np.exp(-(x/param[3])**2)
-    if param[0] == 2:
-        func = lambda x: param[2]*np.exp(- (x/param[3])) 
-    if param[0] == 3:
+    elif param[0] == 2:  # 指数型
+        func = lambda x: param[2]*np.exp(- (x/param[3]))
+    elif param[0] == 3:  # 球形型
         func = lambda x: param[2]*(1 - 3*x/2*param[3] + ((x/param[3])**3)/2)
+
     return func(x)
 
 
 def est_covariance_matrix(distance_matrix, param, c0, reg=True):
+    '''
+    分散共分散行列を推定する
+    input: 距離行列, パラメータ, 分散(対角要素)
+    output: 分散共分散行列の推定値
+    '''
     est_covar = np.vectorize(est_covario, excluded=[1])
-    # estimate the covariance
+    # 距離行列にコバリオグラム関数を適用
     covariance = est_covar(distance_matrix, param, c0)
-    # if estimator was not non-negative positive definite, convert it
-    # this process is performed only when the matrix is (n, n)
+    # 推定値が正則ではない場合に、正則な行列に変換する
     if reg is True:
         modified_covariance = convert_add_lmd(covariance)
     else:
         modified_covariance = covariance
-
-    '''
-    疑問
-    半正定値処理をすると、対角要素が0.95周辺に変換される
-    しかもc0の値に関してrobust(2.2~3.5の間)
-    処理の内容としては機械学習の手法から引っ張ってきた
-    '''
 
     return modified_covariance
 
 
 def calc_distance_matrix(data, point_columns):
     '''
-    calculate the distance matrix of specified points
-    input: dataframe, list of columns name
-    output: distance matrix, numpy array
+    距離行列を計算する
+    input: データ, 緯度経度を表すコラムの名前
+    output: 距離行列
     '''
 
     points = data[point_columns].values
@@ -94,7 +88,8 @@ def calc_distance_matrix(data, point_columns):
 
 def est_covario(x, param, c0):
     '''
-    to be written
+    コバリオグラムの値を推定する
+    input: 距離の値, パラメータ, 分散(ナゲット)
     '''
     cond = [x <= 0, x > 0]
     func = [c0, call_model(x, param)]
@@ -102,10 +97,11 @@ def est_covario(x, param, c0):
 
 
 def convert_add_lmd(mat, eps=0.0001):
-    """
+    '''
+    行列を正則化する
     K' = K + lmd I
-    lmd is decided as all eigen values are larger than 0
-    """
+    上式に従って, 固有値のうち負の値を取るものを非負値になおす
+    '''
     mat_positive_definite = np.copy(mat)
     eigen_values = np.linalg.eigvals(mat)
     min_eigen_values = np.min(eigen_values)
@@ -118,9 +114,9 @@ def convert_add_lmd(mat, eps=0.0001):
 
 def do_gls(y, X, covariance_matrix):
     '''
-    generalized least squares using the est_covariance
-    input: data, estimated covariance matrix
-    output: result, coeff param, residual
+    一般化最小二乗法(GLS)
+    input: データ, 重みとなる共分散行列
+    output: GLSの結果と残差
     '''
 
     gls_mod = sm.GLS(endog=y, exog=X, sigma=covariance_matrix)
@@ -132,19 +128,17 @@ def do_gls(y, X, covariance_matrix):
 
 def put_pred_val(gls_res, new_data):
     '''
-    calculate the predicted value by gls
-    input: model, exog of new data
-    output: predicted values
+    GLSによる予測値
     '''
 
     pred = gls_res.predict(exog=new_data)
+
     return pred
 
 
 def calc_distance_new_data(new_points, points):
     '''
-    calculate the distance matrix bet new data and existing data
-    each points should be numpy array, not DataFrame
+    既存データの各点と予測したいデータの各点との距離行列を求める
     '''
 
     m_list = []
@@ -159,9 +153,9 @@ def calc_distance_new_data(new_points, points):
 
 def do_kriging(fitted_val, c_mat, sigma, resid):
     '''
-    perform kriging
-    input: fitted val, covariance bet new-data, covariance, resid
-    output:kriging interpolated values
+    クリギング(GLSの値を共分散行列で補正)を実行
+    input: GLSの予測値, 共分散行列, 残差(GLSの予測誤差)
+    output: 空間補間された値
     '''
 
     krig_weight = np.dot(c_mat.T, np.linalg.inv(sigma))

@@ -7,16 +7,19 @@ import matplotlib.pyplot as plt
 
 def get_diff(data):
     '''
-    get the difference of spatial data
-    input: (n,3) matrix data
-    output: np.array(n,2)
+    バリオグラム雲データを計算する
+    input: np.array(n, 3)
+    output: np.array(n, 2)
     '''
 
-    # calculate the distance between each pair of points
+    # 各点間の距離を計算する
     dist_vec = pdist(data[:, :2])
     z_vec = pdist(data[:, 2:])**2
-    # calculate the difference of the values in each pairwise
+
+    # 各点間の値の差を計算する
     diff = np.stack([dist_vec, z_vec])
+
+    # 距離の最大値の三分の一の距離にある点のペアのみを対象とする
     lat = [data[:, 0:1].min(), data[:, 0:1].max()]
     lon = [data[:, 1:2].min(), data[:, 1:2].max()]
     distance = (lat[1] - lat[0])**2 + (lon[1] - lon[0])**2
@@ -24,13 +27,14 @@ def get_diff(data):
     index = diff[0] <= distance
     diff = np.array([dif[index] for dif in diff])
 
-    return diff, lat, lon
+    return diff
 
 
 def emp_variogram(z_vario, lag_h):
     '''
-    calculate empirical variogram
-    input: difference of spatial (2, nC2)matrix,  bandwith of bins
+    経験バリオグラムを計算する
+    input: バリオグラム雲のデータ, binの数
+output: 経験バリオグラム, binのカウント
     '''
     bin_means, bin_edges, bin_number = \
         stats.binned_statistic(z_vario[0], z_vario[1], statistic='mean', bins=lag_h)
@@ -64,11 +68,11 @@ def spherical_model(x, r, theta):
     return np.piecewise(x, cond, func)
 
 
-def auto_fit(e_vario, fitting_range, selected_model):
+def est_param(e_vario, fitting_range, selected_model):
     '''
-    設定してモデルを経験バリオグラムにフィッティングし、パラメータを推定する
-    Input:
-    Output:
+    モデル形を設定して経験バリオグラムにフィッティングし、パラメータを推定する
+    Input: 経験バリオグラム, フィッティングの距離幅, モデル型
+    Output: 推定したパラメータ
     '''
     # フィッティングレンジまでで標本バリオグラムを削る
     data = np.delete(e_vario, np.where(e_vario[0] > fitting_range)[0], axis=1)
@@ -88,6 +92,9 @@ def auto_fit(e_vario, fitting_range, selected_model):
 
 
 def plot_semivario(e_vario, param):
+    '''
+    推定したバリオグラムをプロットする
+    '''
     fig, ax = plt.subplots()
     ax.plot(e_vario[0], e_vario[1], 'o')
     xlim_arr = np.linspace(0, np.max(e_vario[0])*1.1, 10)
@@ -118,15 +125,15 @@ def plot_semivario(e_vario, param):
 def choose_model(e_vario, count, i, plot=True):
     '''
     NWLS法による理論バリオグラムの推定
-    input: empirical variogram, number of data in each bin
-    output: param(model, coeff), minimized squared residuals, plot of result
-    注意: この関数は不要かもしれない。auto_varioで関数型を指定する?
+    input: 経験バリオグラム, binのカウント, モデル型
+    output: パラメータ, 推定結果をプロットしたもの
     '''
     obj_min = None
     model_param = None
-    param = auto_fit(e_vario, 100, i)
+    param = est_param(e_vario, 100, i)
     #  誤差を算出する
-    '''if i == 0:
+    '''線形モデル: 今回は実装しない
+    if i == 0:
         theoritical_vario = liner_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
         resid_sq = resid**2
@@ -142,7 +149,7 @@ def choose_model(e_vario, count, i, plot=True):
         # 最小化する
         obj = weight*resid_sq
         obj_sum = obj.sum()
-    if i == 2:
+    elif i == 2:
         # continue;
         theoritical_vario = exponential_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
@@ -151,7 +158,7 @@ def choose_model(e_vario, count, i, plot=True):
         # 最小化する
         obj = weight*resid_sq
         obj_sum = obj.sum()
-    if i == 3:
+    elif i == 3:
         theoritical_vario = spherical_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
         resid_sq = resid**2
@@ -162,19 +169,30 @@ def choose_model(e_vario, count, i, plot=True):
     if obj_min is None or obj_sum < obj_min:
         obj_min = obj_sum
         model_param = param
+
+    # 推定した理論バリオグラムのプロット
     if plot is True:
         best_vario_fig = plot_semivario(e_vario, model_param)
     else:
         best_vario_fig = None
-    return model_param, obj_min, best_vario_fig
+
+    return model_param, best_vario_fig
 
 
 def auto_vario(data, lag, model, plot=True):
     '''
     NWLS法に基づいてバリオグラムを推定する
-    Input:
-    Output:
+    Input: 推定したいデータ, binのカウント, モデルの形, plotするかどうか
+    Output: パラメータ, プロットした結果(任意)
     '''
-    e_vario, count = emp_variogram(data, lag)
-    param, resid, vario_plot = choose_model(e_vario, count, model, plot)
-    return param, lag, vario_plot
+
+    # バリオグラム雲データの作成
+    diff = get_diff(data)
+
+    # 経験バリオグラムの推定
+    e_vario, count = emp_variogram(diff, lag)
+
+    # パラメータの推定
+    param, vario_plot = choose_model(e_vario, count, model, plot)
+
+    return param, vario_plot
