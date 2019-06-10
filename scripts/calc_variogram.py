@@ -68,7 +68,7 @@ def spherical_model(x, r, theta):
     return np.piecewise(x, cond, func)
 
 
-def est_param(e_vario, fitting_range, selected_model):
+def est_param(e_vario, fitting_range, model_selec):
     '''
     モデル形を設定して経験バリオグラムにフィッティングし、パラメータを推定する
     Input: 経験バリオグラム, フィッティングの距離幅, モデル型
@@ -76,18 +76,18 @@ def est_param(e_vario, fitting_range, selected_model):
     '''
     # フィッティングレンジまでで標本バリオグラムを削る
     data = np.delete(e_vario, np.where(e_vario[0] > fitting_range)[0], axis=1)
-    if (selected_model == 0):
+    if (model_selec == 0):
         param, cov = opt.curve_fit(liner_model, data[0], data[1])
-    elif (selected_model == 1):
+    elif (model_selec == 1):
         param, cov = \
             opt.curve_fit(gaussian_model, data[0], data[1], bounds=(0, fitting_range))
-    elif (selected_model == 2):
+    elif (model_selec == 2):
         param, cov = \
             opt.curve_fit(exponential_model, data[0], data[1], bounds=(0, 1.5))
-    elif (selected_model == 3):
+    elif (model_selec == 3):
         param, cov = \
             opt.curve_fit(spherical_model, data[0], data[1], bounds=(0, fitting_range))
-    param = np.insert(param, 0, [selected_model, fitting_range])
+    param = np.insert(param, 0, [model_selec, fitting_range])
     return param
 
 
@@ -122,7 +122,7 @@ def plot_semivario(e_vario, param):
     return fig
 
 
-def choose_model(e_vario, count, i, plot=True):
+def choose_model(e_vario, count, model_selec, plot=True):
     '''
     NWLS法による理論バリオグラムの推定
     input: 経験バリオグラム, binのカウント, モデル型
@@ -130,10 +130,10 @@ def choose_model(e_vario, count, i, plot=True):
     '''
     obj_min = None
     model_param = None
-    param = est_param(e_vario, 100, i)
+    param = est_param(e_vario, 100, model_selec)
     #  誤差を算出する
     '''線形モデル: 今回は実装しない
-    if i == 0:
+    if model_selec == 0:
         theoritical_vario = liner_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
         resid_sq = resid**2
@@ -141,7 +141,7 @@ def choose_model(e_vario, count, i, plot=True):
         # 最小化する
         obj = weight*resid_sq
         obj_sum = obj.sum()'''
-    if i == 1:
+    if model_selec == 1:
         theoritical_vario = gaussian_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
         resid_sq = resid**2
@@ -149,7 +149,7 @@ def choose_model(e_vario, count, i, plot=True):
         # 最小化する
         obj = weight*resid_sq
         obj_sum = obj.sum()
-    elif i == 2:
+    elif model_selec == 2:
         # continue;
         theoritical_vario = exponential_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
@@ -158,7 +158,7 @@ def choose_model(e_vario, count, i, plot=True):
         # 最小化する
         obj = weight*resid_sq
         obj_sum = obj.sum()
-    elif i == 3:
+    elif model_selec == 3:
         theoritical_vario = spherical_model(e_vario[0], param[2], param[3])
         resid = e_vario[1] - theoritical_vario
         resid_sq = resid**2
@@ -179,7 +179,7 @@ def choose_model(e_vario, count, i, plot=True):
     return model_param, best_vario_fig
 
 
-def auto_vario(data, lag, model, plot=True):
+def auto_vario(data, lag, model_selec, plot=True):
     '''
     NWLS法に基づいてバリオグラムを推定する
     Input: 推定したいデータ, binのカウント, モデルの形, plotするかどうか
@@ -193,6 +193,6 @@ def auto_vario(data, lag, model, plot=True):
     e_vario, count = emp_variogram(diff, lag)
 
     # パラメータの推定
-    param, vario_plot = choose_model(e_vario, count, model, plot)
+    param, vario_plot = choose_model(e_vario, count, model_selec, plot)
 
     return param, vario_plot

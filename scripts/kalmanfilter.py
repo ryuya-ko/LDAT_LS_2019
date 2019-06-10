@@ -9,22 +9,22 @@ def kalman(y, x, SigP, SigX, SigY, F):
     output: 観測データの予測値, 状態変数のfiltering値, filtering分布の分散, 周辺尤度, 予測尤度の分散
     '''
 
-    # variance of state variable at t
+    # 状態変数のt時点での分散
     SigP0 = SigP + SigX
 
-    # mean and variance of predicted likelihood of obs
+    # 予測尤度の平均と分散
     # y0_til = np.dot(F, x)
     SX_til = np.dot(np.dot(F, SigP0), F.T) + SigY
     SX_til_inv = np.linalg.inv(SX_til)
 
-    # kalman gain
+    # カルマン利得
     K = np.dot(np.dot(SigP0, F.T), SX_til_inv)
 
-    # update state
-    # calculate mean
+    # 状態更新
+    # 平均の算出
     y1_til = y - np.dot(F, x)
     x1 = x + np.dot(K, y1_til)
-    # calculate variance
+    # 分散の算出
     dim = F.shape
     if type(F) == int:
         dim = [1]
@@ -32,10 +32,10 @@ def kalman(y, x, SigP, SigX, SigY, F):
     Sig = In - np.dot(K, F)
     SigP1 = np.dot(Sig, SigP0)
 
-    # calculate predicted val
+    # 予測値の算出
     pred = np.dot(F, x1)
 
-    # calculate model marginal likelihood at t
+    # 事後分布の周辺尤度の計算
     det = np.linalg.det(SX_til)
     var = np.dot(np.dot(y1_til.T, SX_til_inv), y1_til)
     logz = 0.5*(np.log(det) - var)
